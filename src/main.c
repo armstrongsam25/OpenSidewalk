@@ -13,6 +13,7 @@
 #include "telemetry.h"
 #include "join_policy.h"
 #include "ble_bridge.h"
+#include "round_display.h"
 
 LOG_MODULE_REGISTER(kg100s_lorawan, LOG_LEVEL_INF);
 
@@ -160,6 +161,12 @@ static int cmd_provision(const struct shell *sh, size_t argc, char **argv)
 	memcpy(updated.app_key, app_key, sizeof(app_key));
 	updated.provisioned = 1;
 	ret = save_config(&updated);
+#ifdef CONFIG_DISPLAY
+	if (!ret) {
+		round_display_ttn(atomic_get(&join_delay_seconds) < 0 ? ROUND_TTN_ERROR :
+				  ROUND_TTN_STARTING);
+	}
+#endif
 	atomic_clear(&busy);
 	if (ret) {
 		shell_error(sh, "Saving credentials failed: %d", ret);
@@ -281,6 +288,7 @@ static void downlink(uint8_t port, uint8_t flags, int16_t rssi, int8_t snr,
 		     uint8_t len, const uint8_t *data)
 {
 	ARG_UNUSED(flags);
+	round_display_downlink(port, len, rssi);
 	LOG_INF("Downlink port %u, RSSI %d dBm, SNR %d dB", port, rssi, snr);
 	if (len && data) {
 		LOG_HEXDUMP_INF(data, len, "Downlink payload");
@@ -360,18 +368,21 @@ static void attempt_join(void)
 	if (ret) {
 		next_join = -1;
 		atomic_set(&join_delay_seconds, -1);
+		round_display_ttn(ROUND_TTN_ERROR);
 		LOG_ERR("OTAA setup/storage failed: %d; automatic joins halted", ret);
 		return;
 	}
 	LOG_INF("OTAA join: US915 sub-band %u, channels %u-%u, reserved DevNonce %u",
 		profile.subband, first_channel, first_channel + 7,
 		(unsigned int)join_cfg.otaa.dev_nonce + 1);
+	round_display_ttn(ROUND_TTN_JOINING);
 	ret = lorawan_join(&join_cfg);
 	if (ret) {
 		uint32_t delay = join_retry_delay_ms(++join_failures);
 
 		next_join = k_uptime_get() + delay;
 		atomic_set(&join_delay_seconds, delay / 1000);
+		round_display_ttn(ROUND_TTN_RETRY);
 		LOG_WRN("Join failed: %d; retry in %u seconds", ret, delay / 1000);
 		return;
 	}
@@ -379,6 +390,7 @@ static void attempt_join(void)
 	next_join = -1;
 	atomic_set(&join_delay_seconds, 0);
 	atomic_set(&joined, 1);
+	round_display_ttn(ROUND_TTN_JOINED);
 	LOG_INF("LoRaWAN OTAA JOIN ACCEPTED");
 	send_telemetry();
 }
@@ -394,11 +406,13 @@ int main(void)
 
 	LOG_INF("KG100S BLE/LoRaWAN bridge v0.4.1; US915; automatic OTAA");
 	if (!device_is_ready(radio)) {
+		round_display_ttn(ROUND_TTN_ERROR);
 		LOG_ERR("Integrated SX1262 is not ready");
 		return -ENODEV;
 	}
 	ret = telemetry_init();
 	if (ret) {
+		round_display_ttn(ROUND_TTN_ERROR);
 		LOG_ERR("Temperature/button initialization failed: %d", ret);
 		return ret;
 	}
@@ -411,16 +425,22 @@ int main(void)
 		ret = config_load_error;
 	}
 	if (ret) {
+		round_display_ttn(ROUND_TTN_ERROR);
 		LOG_ERR("Persistent settings failed: %d; radio transmission disabled", ret);
 		return ret;
 	}
 	ret = lorawan_start();
 	if (ret) {
+		round_display_ttn(ROUND_TTN_ERROR);
 		LOG_ERR("LoRaWAN initialization failed: %d", ret);
 		return ret;
 	}
 	lorawan_register_downlink_callback(&callback);
 	lorawan_enable_adr(true);
+#ifdef CONFIG_DISPLAY
+	round_display_ttn(config_snapshot().provisioned ? ROUND_TTN_STARTING :
+			  ROUND_TTN_UNCONFIGURED);
+#endif
 	atomic_set(&ready, 1);
 	ret = ble_bridge_init();
 	if (ret) {

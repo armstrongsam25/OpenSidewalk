@@ -21,6 +21,7 @@ Apache-2.0 does not replace the licenses of its dependencies.
 | LoRaMac-node software CMAC | Lander Casado / Philippas Tsigas, 2009 | Separate permissive conditions, `licenses/CMAC-Casado-Tsigas.txt` |
 | Picolibc / Newlib runtime | Included with Zephyr SDK 1.0.1 | Per-file permissive licenses; complete supplied notices in `licenses/Picolibc-COPYING.txt` and `licenses/Newlib-COPYING.txt` |
 | GNU compiler runtime `libgcc` | GCC 14.3.0, Zephyr SDK 1.0.1 | GPL-3.0-or-later WITH GCC-exception-3.1; both texts in `licenses/` |
+| Barlow Semi Condensed, bitmap glyphs for the optional round display | Barlow Project Authors | SIL Open Font License 1.1, `licenses/Barlow-OFL.txt` |
 
 The GCC Runtime Library Exception permits distributing eligible compiled
 combinations under terms consistent with the independent modules. This project

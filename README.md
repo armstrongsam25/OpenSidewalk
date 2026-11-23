@@ -194,7 +194,7 @@ Start in a parent directory whose path has no spaces:
 ```sh
 mkdir opensidewalk-workspace
 cd opensidewalk-workspace
-git clone https://github.com/Kentucky-Open-Science/OpenSidewalk app
+git clone https://github.com/armstrongsam25/OpenSidewalk app
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -r app/requirements-host.txt
@@ -217,6 +217,45 @@ that they are already applied. It stages the application outside paths containin
 spaces and produces `firmware/opensidewalk-us915.hex` and `.bin`.
 See [validation](docs/VALIDATION.md), [RF-switch provenance](docs/RF_SWITCH_PROVENANCE.md)
 and [third-party notices](THIRD_PARTY_NOTICES.md).
+
+### Optional round display
+
+The `--round-display` flag enables the dashboard for a 240×240 GC9A01 SPI panel.
+
+```sh
+python app/tools/build.py --sdk /path/to/zephyr-sdk-1.0.1 --round-display
+commander flash build-display/opensidewalk-us915-display.hex --serialno YOUR_JLINK_SERIAL
+```
+
+The dashboard shows MCU temperature, TTN join status, downlinks, button presses,
+and Bluetooth activity. `lcd test` briefly shows color bars. The supplied overlay
+rotates the panel 180°. Adjust `orientation` in `round-display.overlay` to suit
+your mount.
+
+Wire the panel to the **BRD4002A** mainboard with power disconnected. Use the
+approximately 3.3 V `VMCU` rail. The wiring below assumes the panel has a CS
+pull-down, as on the seven-pin module used for testing.
+
+| Panel pin | Mainboard connection |
+| --- | --- |
+| VCC | EXP 2 (VMCU) |
+| GND | EXP 1 (GND) |
+| SCL | EXP 15 (SPI clock) |
+| SDA | EXP 16 (SPI data out) |
+| DC | Top-edge pad F20 |
+| RST | Top-edge pad F19 |
+| CS | Leave open on a panel with an onboard pull-down |
+
+See [Silicon Labs UG544, figures 3.1 and 3.5](https://www.silabs.com/documents/public/user-guides/ug544-brd4332a-user-guide.pdf#page=8).
+
+To play your own GIF on BTN0, install Pillow and pass a local file at build time.
+The player uses the first eight seconds and returns to the dashboard after one
+playthrough. The build produces `build-display-animation/opensidewalk-us915-display-animation.hex`.
+
+```sh
+python -m pip install Pillow
+python app/tools/build.py --sdk /path/to/zephyr-sdk-1.0.1 --round-display --button-gif /path/to/clip.gif
+```
 
 ## Publishing and contributing
 

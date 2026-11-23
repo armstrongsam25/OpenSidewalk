@@ -8,6 +8,7 @@
 #include <zephyr/shell/shell.h>
 #include <zephyr/sys/atomic.h>
 #include "ble_bridge.h"
+#include "round_display.h"
 
 LOG_MODULE_REGISTER(ble_bridge, LOG_LEVEL_INF);
 
@@ -62,6 +63,7 @@ static void connected(struct bt_conn *conn, uint8_t error)
 
 	k_spin_unlock(&queue_lock, key);
 	atomic_set_bit(&connected_slots, bt_conn_index(conn));
+	round_display_event(ROUND_EVENT_BLE_CONNECTED);
 	bt_addr_le_to_str(peer, address, sizeof(address));
 	if (queued) {
 		LOG_INF("BLE connected %s; TTN event queued", address);
@@ -79,7 +81,9 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	/* An immediate link failure can produce disconnected without a prior
 	 * successful connected callback. Clear only this connection's slot.
 	 */
-	atomic_clear_bit(&connected_slots, bt_conn_index(conn));
+	if (atomic_test_and_clear_bit(&connected_slots, bt_conn_index(conn))) {
+		round_display_event(ROUND_EVENT_BLE_DISCONNECTED);
+	}
 	LOG_INF("BLE disconnected: 0x%02x", reason);
 }
 

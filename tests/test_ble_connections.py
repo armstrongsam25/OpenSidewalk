@@ -60,7 +60,12 @@ static void atomic_clear(atomic_t *a) { *a=0; }
 static int atomic_inc(atomic_t *a) { return (*a)++; }
 static int atomic_dec(atomic_t *a) { return (*a)--; }
 static void atomic_set_bit(atomic_t *a,int bit) { *a |= 1u << bit; }
-static void atomic_clear_bit(atomic_t *a,int bit) { *a &= ~(1u << bit); }
+static bool atomic_test_and_clear_bit(atomic_t *a,int bit) {
+    unsigned int mask=1u << bit;
+    bool was_set=(*a & mask) != 0;
+    *a &= ~mask;
+    return was_set;
+}
 struct k_spinlock { int unused; };
 typedef int k_spinlock_key_t;
 static k_spinlock_key_t k_spin_lock(struct k_spinlock *s) { (void)s; return 0; }

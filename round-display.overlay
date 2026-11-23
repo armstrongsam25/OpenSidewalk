@@ -1,0 +1,58 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+#include <zephyr/dt-bindings/display/panel.h>
+#include <zephyr/dt-bindings/pinctrl/silabs/xg21-pinctrl.h>
+
+/* The stock KG100S build leaves this bus unused. Reuse its pins for SPI. */
+&i2c0 {
+	status = "disabled";
+};
+
+&pti {
+	status = "disabled";
+};
+
+&pinctrl {
+	display_spi_default: display_spi_default {
+		group1 {
+			/* EXP 15 (clock) and EXP 16 (data). */
+			pins = <USART1_CLK_PB1>, <USART1_TX_PB0>;
+			drive-push-pull;
+			output-low;
+		};
+	};
+};
+
+&usart1 {
+	compatible = "silabs,usart-spi";
+	pinctrl-0 = <&display_spi_default>;
+	pinctrl-names = "default";
+	clock-frequency = <8000000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+};
+
+/ {
+	display-dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&usart1>;
+		dc-gpios = <&gpioc 4 GPIO_ACTIVE_HIGH>; /* F20 (PTI data) */
+		reset-gpios = <&gpioc 5 GPIO_ACTIVE_LOW>; /* F19 (PTI frame) */
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		round_display: gc9a01@0 {
+			compatible = "galaxycore,gc9x01x";
+			reg = <0>;
+			/* Dedicated bus. This module pulls CS low on its PCB. */
+			mipi-max-frequency = <8000000>;
+			pixel-format = <PANEL_PIXEL_FORMAT_RGB_565>;
+			width = <240>;
+			height = <240>;
+			orientation = "180";
+			display-inversion;
+		};
+	};
+};

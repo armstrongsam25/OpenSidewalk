@@ -8,6 +8,7 @@
 #include <zephyr/sys/atomic.h>
 #include <zephyr/logging/log.h>
 #include "telemetry.h"
+#include "round_display.h"
 
 LOG_MODULE_REGISTER(kg100s_telemetry, LOG_LEVEL_INF);
 
@@ -31,6 +32,7 @@ static void button_event(struct input_event *evt, void *user_data)
 	index = evt->code == INPUT_KEY_0 ? 0 : 1;
 	if (evt->value) {
 		atomic_inc(&presses[index]);
+		round_display_event(index == 0 ? ROUND_EVENT_BUTTON_0 : ROUND_EVENT_BUTTON_1);
 	}
 	atomic_set(&pending, 1);
 	LOG_INF("BTN%u %s, presses=%u", index, evt->value ? "pressed" : "released",
